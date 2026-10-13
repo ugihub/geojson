@@ -4,11 +4,11 @@
 //   mapcontrol.js garis skala, tombol "lokasi saya", dan tombol live tracking
 //   georoute.js   rute terpendek di sepanjang garis-garis di dalam data; ikut mengekspor
 //                 fungsi geomeasure.js, di sini getDistance() untuk jarak garis lurus
-import { createMap, addGeoJSON, fitMap, onMapClick, getGeoJSON } from "https://cdn.jsdelivr.net/gh/crootjs/lib@0.0.16/map.min.js";
-import { addMarker } from "https://cdn.jsdelivr.net/gh/crootjs/lib@0.0.16/mapmarker.min.js";
-import { addScaleBar, addLocateButton, addTrackButton } from "https://cdn.jsdelivr.net/gh/crootjs/lib@0.0.16/mapcontrol.min.js";
-import { findRoute, getDistance } from "https://cdn.jsdelivr.net/gh/crootjs/lib@0.0.16/georoute.min.js";
-import { setInnerText } from "https://cdn.jsdelivr.net/gh/crootjs/lib@0.0.16/element.min.js";
+import { createMap, addGeoJSON, fitMap, onMapClick, getGeoJSON } from "https://cdn.jsdelivr.net/gh/crootjs/lib@v0.0.16/map.js";
+import { addMarker } from "https://cdn.jsdelivr.net/gh/crootjs/lib@v0.0.16/mapmarker.js";
+import { addScaleBar, addLocateButton, addTrackButton } from "https://cdn.jsdelivr.net/gh/crootjs/lib@v0.0.16/mapcontrol.js";
+import { findRoute, getDistance } from "https://cdn.jsdelivr.net/gh/crootjs/lib@v0.0.16/georoute.js";
+import { setInnerText } from "https://cdn.jsdelivr.net/gh/crootjs/lib@v0.0.16/element.js";
 
 let roads = null;             // data jalan, diisi setelah termuat
 let removeRoute = () => {};   // penghapus garis rute yang sedang tampil
@@ -21,7 +21,7 @@ addLocateButton("map");
 addTrackButton("map");
 
 // Dua pin yang bisa digeser. Setiap kali salah satunya selesai digeser, rutenya dihitung ulang.
-const start = addMarker("map", [107.575914, -6.8732098], { color: "#16a34a", label: "A", title: "Titik awal", draggable: true, onDragEnd: showRoute });
+const start = addMarker("map", [107.5760061, -6.8729768], { color: "#16a34a", label: "A", title: "Titik awal", draggable: true, onDragEnd: showRoute });
 const end = addMarker("map", [107.5772, -6.8752], { color: "#dc2626", label: "B", title: "Tujuan", draggable: true, onDragEnd: showRoute });
 
 // Klik di peta memindahkan tujuan ke titik yang diklik.
@@ -64,10 +64,28 @@ function showRoute() {
         fitMap("map", route, 60);
     }
 
-    const biaya = 10000 + Math.ceil(Math.max(0, route.properties.distance - 2000) / 1000) * 2500;
-    setInnerText("ongkos", new Intl.NumberFormat("id-ID", {style:"currency", currency:"IDR", maximumFractionDigits:0}).format(biaya));
+    const routeDistance = route.properties?.distance;
+    if (!Number.isFinite(routeDistance)) {
+        setInnerText("ongkos", "—");
+        setInnerText("status", "Rute ditemukan, tetapi jaraknya tidak valid.");
+        return;
+    }
+
+    // Tarif hanya ilustrasi untuk tugas, bukan tarif resmi Gojek.
+    // Rp10.000 untuk 2 km pertama, tambahan Rp2.500 per km berikutnya.
+    const biaya = 10000 + Math.ceil(Math.max(0, routeDistance - 2000) / 1000) * 2500;
+    const formatter = new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        maximumFractionDigits: 0
+    });
+    setInnerText("ongkos", formatter.format(biaya));
+
     const direct = getDistance(from, to);
-    setInnerText("status", `Rute A ke B: ${formatMeters(route.properties.distance)} lewat jalan, ${formatMeters(direct)} garis lurus.`);
+    setInnerText(
+        "status",
+        `Rute A ke B: ${formatMeters(routeDistance)} lewat jalan, ${formatMeters(direct)} garis lurus.`
+    );
 }
 
 function formatMeters(meters) {
